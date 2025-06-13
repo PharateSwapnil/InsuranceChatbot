@@ -5,10 +5,16 @@ import CustomerSearch from "@/components/customer-search";
 import CustomerProfile from "@/components/customer-profile";
 import ChatInterface from "@/components/chat-interface";
 import Sidebar from "@/components/sidebar";
+import UserProfile from "@/components/user-profile";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/App";
 import type { Customer } from "@shared/schema";
+
+// Helper function to format role display text
+const formatRoleDisplay = (role: string): string => {
+  return "Sales Advisor";
+};
 
 interface DashboardProps {
   user: User;
@@ -86,24 +92,28 @@ export default function Dashboard({ user, setUser }: DashboardProps) {
               </span>
             </Button>
             
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gold-accent rounded-full flex items-center justify-center">
-                <UserIcon className="w-4 h-4 text-trust-navy" />
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gold-accent rounded-full flex items-center justify-center">
+                  <UserIcon className="w-4 h-4 text-trust-navy" />
+                </div>
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-xs opacity-75">{formatRoleDisplay(user.role)}</p>
+                </div>
               </div>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs opacity-75">{user.role}</p>
-              </div>
+              
+              <UserProfile user={user} />
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="text-white hover:bg-white/10"
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-white hover:bg-white/10"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
           </div>
         </div>
       </header>

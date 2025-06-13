@@ -1,10 +1,12 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -60,11 +62,18 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
+  // Windows-compatible server configuration
+  const isWindows = process.platform === 'win32';
+  const serverConfig = isWindows ? {
+    port,
+    host: "localhost"
+  } : {
     port,
     host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+    reusePort: true
+  };
+
+  server.listen(serverConfig, () => {
     log(`serving on port ${port}`);
   });
 })();

@@ -4,12 +4,24 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 
+// Simple in-memory session store for development
+const sessions = new Map<string, any>();
+
 // Load environment variables
 const groqApiKey =
   process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
 const isDevelopment = process.env.NODE_ENV === "development";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Session middleware
+  app.use((req, res, next) => {
+    const sessionId = req.headers['x-session-id'] as string || req.cookies?.sessionId;
+    if (sessionId && sessions.has(sessionId)) {
+      (req as any).session = sessions.get(sessionId);
+    }
+    next();
+  });
+
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -27,7 +39,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // In a real app, you'd use proper session management
+      // Create session
+      const sessionId = nanoid();
+      const sessionData = { user };
+      sessions.set(sessionId, sessionData);
+      
+      // Set session cookie
+      res.cookie('sessionId', sessionId, { 
+        httpOnly: true, 
+        secure: false, // Set to true in production
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      });
+
       res.json({
         user: {
           id: user.id,
@@ -124,12 +147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const session = await storage.createChatSession({
-        id: nanoid(),
         user_id,
         customer_id: customer_id || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_active: 1,
       });
 
       res.json(session);
@@ -174,7 +193,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const healthConditions = JSON.parse(customer.health_conditions);
 
           customerContext = `
-Customer Profile:
+CUSTOMER ANALYSIS FOR SALES ADVISOR:
+Customer: ${customer.name}
 - Age: ${customer.age}
 - Gender: ${customer.gender}
 - Marital Status: ${customer.marital_status}
@@ -191,16 +211,52 @@ Customer Profile:
               .join(", ") || "None reported"
           }
 - Existing Policies: ${existingPolicies.map((p: any) => `${p.provider} ${p.type} (₹${p.coverage} coverage, ₹${p.premium}/year)`).join(", ")}
+
+SALES GUIDANCE: Analyze this customer profile and provide recommendations for Aditya Birla Insurance products. Help the sales advisor understand customer needs and suggest appropriate talking points.
 `;
         }
       }
 
-      // System prompt for ABHi
-      const systemPrompt = `You are "ABHi" (Aditya Birla Hybrid Insurance) Assistant — a professional AI insurance policy sales Advisor for Aditya Birla Insurance.
+      // Get user information and exemptions for personalized guidance
+      const sessionUser = (req as any).session?.user;
+      let currentAdvisor = null;
+      let userExemptions: any[] = [];
+      let exemptionGuidance = "";
+      let advisorContext = "";
+      
+      if (sessionUser) {
+        try {
+          currentAdvisor = await storage.getUserByUsername(sessionUser.username);
+          if (currentAdvisor) {
+            userExemptions = await storage.getUserExemptions(currentAdvisor.id);
+            
+            advisorContext = `\n\nSALES ADVISOR CONTEXT:
+Advisor Name: ${currentAdvisor.name}
+Role: ${currentAdvisor.role}
+Certification Level: ${userExemptions.length > 0 ? userExemptions[0].certification_type : 'Standard'}`;
+            
+            if (userExemptions.length > 0) {
+              exemptionGuidance = `\n\nUNDERWRITING EXEMPTION LIMITS FOR ${currentAdvisor.name.toUpperCase()}:
+${userExemptions.map(ex => `- ${ex.product_type}: Up to ₹${ex.exemption_limit.toLocaleString()} (${ex.certification_type} authority)`).join('\n')}
 
-Your job is to:
-1. Understand customer needs and demographics
-2. Recommend the most suitable insurance policy offered by Aditya Birla Insurance across:
+SALES AUTHORITY VALIDATION:
+- For requests WITHIN limits: Instant approval available - emphasize quick processing
+- For requests ABOVE limits: Must inform about full underwriting requirement
+
+RESPONSE FORMAT: Always address as "${currentAdvisor.name}" and validate coverage amounts against exemption limits before recommending policies.`;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user exemptions:", error);
+        }
+      }
+
+      // System prompt for ABHi
+      const systemPrompt = `You are "ABHi" (Aditya Birla Hybrid Insurance) Assistant — a professional AI assistant designed to help Aditya Birla Insurance sales advisors.
+
+Your role is to ASSIST THE SALES ADVISOR by providing:
+1. Customer analysis and policy recommendations for their prospects
+2. Detailed information about Aditya Birla Insurance products:
    - Health Insurance (Activ Health Enhanced, Activ Care, Activ Fit)
    - Life Insurance 
    - Term Plans (Protect@Ease, Protect@Active, Family Protect Plan)
@@ -208,17 +264,16 @@ Your job is to:
    - Retirement Plans (Vision Life Pension Plan)
    - Investment-linked Insurance (Vision LifeWealth Plan)
 
-3. If the customer holds policies with other providers, compare them with Aditya Birla policies and explain our superior benefits:
-   - Our claim settlement ratio: 98.2% (industry leading)
-   - 6,500+ cashless network hospitals
-   - Lower premiums (10-20% savings)
-   - Better features and riders
-   - 24-48 hour claim processing
+3. Competitive analysis when customers have policies with other providers
+4. Sales talking points and objection handling strategies
+5. Underwriting guidance and policy limits
 
-4. Clearly answer insurance-related questions in simple terms
-5. Build trust and long-term relationships
+IMPORTANT: You are talking TO the sales advisor, NOT to the customer. 
+- Address the sales advisor directly (e.g., "I recommend you present..." or "You can tell the customer...")
+- Provide sales guidance and talking points
+- Help the advisor understand customer needs and recommend appropriate policies
 
-Key Aditya Birla advantages to highlight:
+Key Aditya Birla advantages to help advisors highlight:
 - Highest claim settlement ratio (98.2%)
 - Comprehensive coverage with no room rent capping
 - Global coverage and wellness rewards
@@ -231,7 +286,7 @@ Key Aditya Birla advantages to highlight:
 
 Always be empathetic, professional, and focus on customer needs. Use bullet points for clarity and ask clarifying questions when needed.
 
-${customerContext}`;
+${customerContext}${exemptionGuidance}`;
 
       // Call Groq API
       let aiResponse = "";
@@ -249,8 +304,8 @@ ${customerContext}`;
               body: JSON.stringify({
                 model: "llama3-8b-8192",
                 messages: [
-                  { role: "system", content: systemPrompt },
-                  { role: "user", content: message },
+                  { role: "system", content: systemPrompt + advisorContext + customerContext + exemptionGuidance },
+                  { role: "user", content: `Sales Advisor Query: ${message}` },
                 ],
                 temperature: 0.7,
                 max_tokens: 1000,
@@ -268,18 +323,17 @@ ${customerContext}`;
           }
         } catch (error) {
           console.error("Groq API error:", error);
-          aiResponse = generateFallbackResponse(message, customerContext);
+          aiResponse = generateFallbackResponse(message, customerContext, currentAdvisor, userExemptions);
         }
       } else {
-        aiResponse = generateFallbackResponse(message, customerContext);
+        aiResponse = generateFallbackResponse(message, customerContext, currentAdvisor, userExemptions);
       }
 
       // Log the interaction
       if (chat_session_id && user_id) {
         await storage.createInteractionLog({
-          id: nanoid(),
-          chat_id: chat_session_id,
           user_id,
+          chat_id: chat_session_id,
           customer_id: customer_id || null,
           messages: JSON.stringify([
             {
@@ -293,7 +347,6 @@ ${customerContext}`;
               timestamp: new Date().toISOString(),
             },
           ]),
-          created_at: new Date().toISOString(),
           recommended_policy: null,
           conversion_status: null,
           feedback_rating: null,
@@ -374,6 +427,33 @@ ${customerContext}`;
     }
   });
 
+  // Get user profile with exemptions
+  app.get("/api/users/:id/profile", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const sessionUser = (req as any).session?.user;
+      
+      if (!sessionUser) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await storage.getUserByUsername(sessionUser.username);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const exemptions = await storage.getUserExemptions(user.id);
+      
+      res.json({
+        user,
+        exemptions
+      });
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -382,39 +462,72 @@ ${customerContext}`;
 function generateFallbackResponse(
   message: string,
   customerContext: string,
+  currentAdvisor: any = null,
+  userExemptions: any[] = [],
 ): string {
   const lowerMessage = message.toLowerCase();
+  const advisorName = currentAdvisor?.name || "Sales Advisor";
+  
+  // Extract coverage amounts from message
+  const coverageMatch = message.match(/(\d+)\s*(cr|crore|lakh|lakhs)/i);
+  let requestedCoverage = 0;
+  if (coverageMatch) {
+    const amount = parseInt(coverageMatch[1]);
+    const unit = coverageMatch[2].toLowerCase();
+    requestedCoverage = unit.includes('cr') ? amount * 10000000 : amount * 100000;
+  }
+
+  // Check underwriting limits
+  let underwritingWarning = "";
+  if (requestedCoverage > 0 && userExemptions.length > 0) {
+    const relevantExemption = userExemptions.find(ex => 
+      lowerMessage.includes(ex.product_type.toLowerCase()) ||
+      (lowerMessage.includes('health') && ex.product_type.includes('Health')) ||
+      (lowerMessage.includes('term') && ex.product_type.includes('Term')) ||
+      (lowerMessage.includes('wealth') && ex.product_type.includes('Investment'))
+    );
+    
+    if (relevantExemption && requestedCoverage > relevantExemption.exemption_limit) {
+      underwritingWarning = `\n\n⚠️ **UNDERWRITING ALERT FOR ${advisorName.toUpperCase()}:**
+The requested ₹${(requestedCoverage/10000000).toFixed(1)} Cr coverage exceeds your ${relevantExemption.certification_type} exemption limit of ₹${(relevantExemption.exemption_limit/100000).toFixed(0)} Lakh for ${relevantExemption.product_type}.
+
+**You must inform the customer:**
+"For coverage above ₹${(relevantExemption.exemption_limit/100000).toFixed(0)} Lakh, full underwriting is required including medical examination, financial documentation, and underwriter approval. Processing time: 7-14 days vs instant approval for coverage within limits."`;
+    }
+  }
 
   if (
     lowerMessage.includes("health insurance") ||
     lowerMessage.includes("medical cover")
   ) {
-    return `**🏥 Health Insurance Recommendations**
+    return `**${advisorName}, here's your Health Insurance guidance:**
 
-Based on our analysis, here are our top Aditya Birla Health Insurance plans:
+I recommend presenting these Aditya Birla Health Insurance options to your customer:
 
-**Activ Health Enhanced** - Our flagship plan
+**Activ Health Enhanced** - Position as our flagship plan
 • Coverage: ₹3L to ₹1Cr (Family Floater)
 • Premium: Starting ₹5,500/year
-• Key Benefits: No room rent capping, global coverage, wellness rewards
+• Key selling points: No room rent capping, global coverage, wellness rewards
 • Claim Settlement: 98.2% (Industry leading)
 
-**Activ Care** - Comprehensive protection
+**Activ Care** - Present for comprehensive protection needs
 • Coverage: ₹2L to ₹1Cr
 • Premium: Starting ₹3,800/year  
 • Network: 6,500+ cashless hospitals
-• Special: Maternity coverage from day 1
+• Special feature: Maternity coverage from day 1
 
-**Why choose Aditya Birla Health Insurance?**
-✅ 98.2% claim settlement ratio (industry best)
-✅ No room rent capping or sub-limits
-✅ 6,500+ cashless hospitals
-✅ Global coverage for emergencies
-✅ Wellness rewards program
+**Your key talking points:**
+- 98.2% claim settlement ratio (industry best)
+- No room rent capping or sub-limits
+- 6,500+ cashless hospitals
+- Global coverage for emergencies
+- Wellness rewards program
 
-${customerContext ? "I can provide personalized recommendations based on the selected customer profile." : "Would you like me to create a personalized recommendation for a specific customer?"}
+${customerContext ? "Based on the customer profile, I can help you tailor your presentation." : "Select a customer to get personalized sales recommendations."}
 
-Shall I generate a detailed quote?`;
+${underwritingWarning}
+
+Would you like me to help you prepare a detailed proposal?`;
   }
 
   if (
