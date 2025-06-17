@@ -333,23 +333,43 @@ pm2 start dist/index.js --name insurance-ai
 - Use reverse proxy (nginx) for production deployments
 - Enable HTTPS in production environments
 
-## Quick Start Summary
+## Port Configuration
 
-### Windows (1-minute setup)
+The application uses different ports for different environments:
+- **Development**: Port 3000 (`npm run dev`)
+- **Production**: Port 5000 (`npm run start`)
+
+### Quick Start Summary
+
+### Windows Development (1-minute setup)
 ```bash
 npm install
 npm run dev:windows
-# Type N when prompted, wait for "serving on port 5000"
-# Open http://localhost:5000
+# Wait for "serving on port http://localhost:3000"
+# Open http://localhost:3000
 # Login: sales.rep001 / abhi2024
 ```
 
-### Linux/macOS (1-minute setup)
+### Windows Production
+```bash
+npm install
+npm run build
+npm run start:windows
+# Wait for "serving on port http://localhost:5000"
+# Open http://localhost:5000
+```
+
+### Linux/macOS Development
 ```bash
 npm install
 npm run dev
-# Open http://localhost:5000
+# Open http://localhost:3000
 # Login: sales.rep001 / abhi2024
 ```
 
-Your Insurance Sales Advisor AI Assistant is now ready for deployment across all platforms with comprehensive feature testing capabilities.
+### Linux/macOS Production
+```bash
+npm install
+npm run build
+npm run start
+# Open http://localhost:5000

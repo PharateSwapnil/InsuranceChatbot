@@ -20,8 +20,27 @@ An AI-powered insurance sales support platform designed to empower Aditya Birla 
 - Sales advisor profile with certification limits
 
 ## Quick Start
-1. Install dependencies: `npm install`
-2. Build client: `npm run build`
-3. Start development server: `npm run dev`
+
+### Development Mode (Port 3000)
+```bash
+npm install
+npm run dev          # Linux/macOS
+npm run dev:windows  # Windows
+```
+
+### Production Mode (Port 5000)
+```bash
+npm install
+npm run build
+npm run start        # Linux/macOS
+npm run start:windows # Windows
+```
+
+### Available Scripts
+- `npm run dev` - Start development server (port 3000)
+- `npm run build` - Build for production (client + server)
+- `npm run start` - Start production server (port 5000)
+- `npm run check` - Type checking
+- `npm run db:push` - Push database schema
 
 For detailed setup instructions, see the installation guide in this folder.

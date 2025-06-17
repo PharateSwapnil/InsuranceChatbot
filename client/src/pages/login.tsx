@@ -21,8 +21,8 @@ interface LoginProps {
 }
 
 export default function Login({ setUser }: LoginProps) {
-  const [username, setUsername] = useState("sales.adv001");
-  const [password, setPassword] = useState("abhi2024");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,10 +52,11 @@ export default function Login({ setUser }: LoginProps) {
       });
       setLocation('/dashboard');
     } catch (error: any) {
-      setError(error.message || "Login failed. Please check your credentials.");
+      const errorMessage = "Invalid credentials";
+      setError(errorMessage);
       toast({
         title: "Login Failed",
-        description: "Please check your username and password.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -168,23 +169,13 @@ export default function Login({ setUser }: LoginProps) {
               )}
             </Button>
 
-            <div className="text-center space-y-3">
+            <div className="text-center">
               <Button
                 variant="link"
                 className="text-azure-blue hover:underline text-sm"
               >
                 Forgot Password?
               </Button>
-
-              <Alert className="bg-muted border-soft-grey">
-                <AlertDescription className="text-center text-sm text-muted-grey">
-                  <strong>Demo Credentials:</strong>
-                  <br />
-                  Username: sales.adv001
-                  <br />
-                  Password: abhi2024
-                </AlertDescription>
-              </Alert>
             </div>
           </form>
         </CardContent>
