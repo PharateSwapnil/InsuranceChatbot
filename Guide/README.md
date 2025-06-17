@@ -24,16 +24,14 @@ An AI-powered insurance sales support platform designed to empower Aditya Birla 
 ### Development Mode (Port 3000)
 ```bash
 npm install
-npm run dev          # Linux/macOS
-npm run dev:windows  # Windows
+npm run dev          # Linux/macOS/Windows
 ```
 
 ### Production Mode (Port 5000)
 ```bash
 npm install
 npm run build
-npm run start        # Linux/macOS
-npm run start:windows # Windows
+npm run start        # Linux/macOS/Windows
 ```
 
 ### Available Scripts
