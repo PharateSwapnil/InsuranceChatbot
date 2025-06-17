@@ -498,11 +498,12 @@ Conversation history: ${chatHistory}
 npm install
 
 # Start development server
-npm run dev:windows  # Windows
-npm run dev          # Unix/Linux/Mac
+npm run dev  # Windows
+npm run dev  # Unix/Linux/Mac
 
 # Build for production
 npm run build
+npm start
 
 # Type checking
 npm run check
@@ -570,7 +571,7 @@ JWT_SECRET=your_jwt_secret_here
 ```bash
 # Windows Production
 npm run build
-npm run start:windows
+npm start
 
 # Linux/Mac Production
 npm run build
@@ -618,7 +619,7 @@ mkdir data
 ### Debug Commands
 ```bash
 # Check server logs
-npm run dev:windows  # Watch console output
+npm run dev  # Watch console output
 
 # Verify database
 sqlite3 data/insurance.db
