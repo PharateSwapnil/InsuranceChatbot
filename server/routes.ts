@@ -5,12 +5,17 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 
 // Simple in-memory session store for development
-const sessions = new Map<string, any>();
+const sessions = new Map();
 
 // Load environment variables
-const groqApiKey =
-  process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
+import dotenv from 'dotenv';
+dotenv.config();
+
+const groqApiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
 const isDevelopment = process.env.NODE_ENV === "development";
+
+// Store conversation history per session
+const conversationHistory = new Map();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
@@ -183,6 +188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
+      console.log("Groq API Key available:", !!groqApiKey);
+      console.log("Processing message:", message);
+
       // Get customer context if provided
       let customerContext = "";
       if (customer_id) {
@@ -243,7 +251,7 @@ SALES AUTHORITY VALIDATION:
 - For requests WITHIN limits: Instant approval available - emphasize quick processing
 - For requests ABOVE limits: Must inform about full underwriting requirement
 
-RESPONSE FORMAT: Always address as "${currentAdvisor.name}" and validate coverage amounts against exemption limits before recommending policies.`;
+RESPONSE FORMAT: Always start your response with "Hi ${currentAdvisor.name}," and validate coverage amounts against exemption limits before recommending policies.`;
             }
           }
         } catch (error) {
@@ -251,8 +259,17 @@ RESPONSE FORMAT: Always address as "${currentAdvisor.name}" and validate coverag
         }
       }
 
+      // Get or create conversation history for this session
+      const sessionKey = chat_session_id || `${user_id}_default`;
+      if (!conversationHistory.has(sessionKey)) {
+        conversationHistory.set(sessionKey, []);
+      }
+      const history = conversationHistory.get(sessionKey)!;
+
       // System prompt for ABHi
       const systemPrompt = `You are "ABHi" (Aditya Birla Hybrid Insurance) Assistant — a professional AI assistant designed to help Aditya Birla Insurance sales advisors.
+
+IMPORTANT RESPONSE FORMAT: Always start your response with "Hi ${currentAdvisor?.name || 'Sales Advisor'}," to personalize the interaction.
 
 Your role is to ASSIST THE SALES ADVISOR by providing:
 1. Customer analysis and policy recommendations for their prospects
@@ -269,7 +286,7 @@ Your role is to ASSIST THE SALES ADVISOR by providing:
 5. Underwriting guidance and policy limits
 
 IMPORTANT: You are talking TO the sales advisor, NOT to the customer. 
-- Address the sales advisor directly (e.g., "I recommend you present..." or "You can tell the customer...")
+- Address the sales advisor directly by name
 - Provide sales guidance and talking points
 - Help the advisor understand customer needs and recommend appropriate policies
 
@@ -291,8 +308,22 @@ ${customerContext}${exemptionGuidance}`;
       // Call Groq API
       let aiResponse = "";
 
-      if (groqApiKey) {
+      if (groqApiKey && groqApiKey.trim() !== "" && groqApiKey !== "your_actual_groq_api_key_here") {
         try {
+          // Build conversation messages including history
+          const messages = [
+            { role: "system", content: systemPrompt + advisorContext + customerContext + exemptionGuidance }
+          ];
+          
+          // Add conversation history (last 10 messages to avoid token limits)
+          const recentHistory = history.slice(-10);
+          messages.push(...recentHistory);
+          
+          // Add current message
+          messages.push({ role: "user", content: message });
+
+          console.log("Calling Groq API with", messages.length, "messages");
+          
           const response = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
             {
@@ -303,10 +334,7 @@ ${customerContext}${exemptionGuidance}`;
               },
               body: JSON.stringify({
                 model: "llama3-8b-8192",
-                messages: [
-                  { role: "system", content: systemPrompt + advisorContext + customerContext + exemptionGuidance },
-                  { role: "user", content: `Sales Advisor Query: ${message}` },
-                ],
+                messages: messages,
                 temperature: 0.7,
                 max_tokens: 1000,
               }),
@@ -318,7 +346,16 @@ ${customerContext}${exemptionGuidance}`;
             aiResponse =
               data.choices[0]?.message?.content ||
               "I apologize, but I'm having trouble generating a response right now. Please try again.";
+            
+            console.log("Groq API response received successfully");
+            
+            // Add to conversation history
+            history.push({ role: "user", content: message });
+            history.push({ role: "assistant", content: aiResponse });
+            
           } else {
+            const errorText = await response.text();
+            console.error(`Groq API error: ${response.status} - ${errorText}`);
             throw new Error(`Groq API error: ${response.status}`);
           }
         } catch (error) {
@@ -326,6 +363,7 @@ ${customerContext}${exemptionGuidance}`;
           aiResponse = generateFallbackResponse(message, customerContext, currentAdvisor, userExemptions);
         }
       } else {
+        console.log("Using fallback response - API key missing or invalid");
         aiResponse = generateFallbackResponse(message, customerContext, currentAdvisor, userExemptions);
       }
 
@@ -437,9 +475,13 @@ ${customerContext}${exemptionGuidance}`;
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const user = await storage.getUserByUsername(sessionUser.username);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      // Use the session user data directly or fetch from database
+      let user = sessionUser;
+      if (!user.id || user.id !== id) {
+        user = await storage.getUserByUsername(sessionUser.username);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
       }
       
       const exemptions = await storage.getUserExemptions(user.id);
@@ -467,6 +509,9 @@ function generateFallbackResponse(
 ): string {
   const lowerMessage = message.toLowerCase();
   const advisorName = currentAdvisor?.name || "Sales Advisor";
+  
+  // Always start with advisor's name
+  const greeting = `Hi ${advisorName},`;
   
   // Extract coverage amounts from message
   const coverageMatch = message.match(/(\d+)\s*(cr|crore|lakh|lakhs)/i);
@@ -500,28 +545,30 @@ The requested ₹${(requestedCoverage/10000000).toFixed(1)} Cr coverage exceeds 
     lowerMessage.includes("health insurance") ||
     lowerMessage.includes("medical cover")
   ) {
-    return `**${advisorName}, here's your Health Insurance guidance:**
+    return `${greeting}
+
+**🏥 Here's your Health Insurance guidance:**
 
 I recommend presenting these Aditya Birla Health Insurance options to your customer:
 
 **Activ Health Enhanced** - Position as our flagship plan
-• Coverage: ₹3L to ₹1Cr (Family Floater)
-• Premium: Starting ₹5,500/year
+• Coverage: **₹3L to ₹1Cr** (Family Floater)
+• Premium: Starting **₹5,500/year**
 • Key selling points: No room rent capping, global coverage, wellness rewards
-• Claim Settlement: 98.2% (Industry leading)
+• Claim Settlement: **98.2%** (Industry leading)
 
 **Activ Care** - Present for comprehensive protection needs
-• Coverage: ₹2L to ₹1Cr
-• Premium: Starting ₹3,800/year  
-• Network: 6,500+ cashless hospitals
+• Coverage: **₹2L to ₹1Cr**
+• Premium: Starting **₹3,800/year**  
+• Network: **6,500+** cashless hospitals
 • Special feature: Maternity coverage from day 1
 
-**Your key talking points:**
-- 98.2% claim settlement ratio (industry best)
-- No room rent capping or sub-limits
-- 6,500+ cashless hospitals
-- Global coverage for emergencies
-- Wellness rewards program
+**🎯 Your key talking points:**
+✅ **98.2%** claim settlement ratio (industry best)
+✅ No room rent capping or sub-limits
+✅ **6,500+** cashless hospitals
+✅ Global coverage for emergencies
+✅ Wellness rewards program
 
 ${customerContext ? "Based on the customer profile, I can help you tailor your presentation." : "Select a customer to get personalized sales recommendations."}
 
@@ -534,27 +581,29 @@ Would you like me to help you prepare a detailed proposal?`;
     lowerMessage.includes("term insurance") ||
     lowerMessage.includes("life cover")
   ) {
-    return `**🛡️ Term Insurance Solutions**
+    return `${greeting}
+
+**🛡️ Term Insurance Solutions**
 
 Our term insurance plans offer maximum life coverage at affordable premiums:
 
 **Protect@Ease** - Premium term plan
-• Coverage: ₹25L to ₹10Cr
+• Coverage: **₹25L to ₹10Cr**
 • Features: Return of premium option, waiver of premium rider
-• Claim Settlement: 98.2% success rate
-• Tax Benefits: Up to ₹1.5L under 80C + ₹10L under 10(10D)
+• Claim Settlement: **98.2%** success rate
+• Tax Benefits: Up to **₹1.5L** under 80C + **₹10L** under 10(10D)
 
 **Protect@Active** - Value-focused term plan
-• Coverage: ₹50L to ₹5Cr  
+• Coverage: **₹50L to ₹5Cr**  
 • Features: Increasing cover option, critical illness rider
 • Ideal for: Young professionals and families
 
-**Why choose Aditya Birla Term Insurance?**
-✅ 10-15% lower premiums than competitors
-✅ 98.2% claim settlement ratio
+**💪 Why choose Aditya Birla Term Insurance?**
+✅ **10-15%** lower premiums than competitors
+✅ **98.2%** claim settlement ratio
 ✅ Flexible premium payment options
 ✅ Multiple rider options available
-✅ Quick claim processing (24-48 hours)
+✅ Quick claim processing (**24-48 hours**)
 
 ${customerContext ? "I can calculate specific premium recommendations based on the customer profile." : ""}
 
@@ -565,7 +614,9 @@ Would you like me to calculate premium for a specific coverage amount?`;
     lowerMessage.includes("compare") ||
     lowerMessage.includes("competition")
   ) {
-    return `**⚖️ Aditya Birla vs Competitors**
+    return `${greeting}
+
+**⚖️ Aditya Birla vs Competitors**
 
 Here's how we outperform major competitors:
 
@@ -603,7 +654,9 @@ Would you like a detailed comparison for a specific policy type?`;
     lowerMessage.includes("calculate") ||
     lowerMessage.includes("quote")
   ) {
-    return `**💰 Premium Calculator**
+    return `${greeting}
+
+**💰 Premium Calculator**
 
 I can help calculate premiums for our various insurance products:
 
@@ -637,7 +690,9 @@ Would you like a detailed quotation?`;
   }
 
   // Default response
-  return `Hello! I'm ABHi, your AI assistant for Aditya Birla Insurance. I can help you with:
+  return `${greeting}
+
+I'm ABHi, your AI assistant for Aditya Birla Insurance. I can help you with:
 
 **🎯 Our Insurance Products:**
 • **Health Insurance** - Activ Health Enhanced, Activ Care
