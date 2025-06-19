@@ -23,10 +23,16 @@ export default function UserProfile({ user }: UserProfileProps) {
   const fetchUserProfile = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/users/${user.id}/profile`);
+      const response = await fetch(`/api/users/${user.id}/profile`, {
+        credentials: 'include' // Include cookies for session
+      });
       if (response.ok) {
         const data = await response.json();
         setProfileData(data);
+      } else if (response.status === 401) {
+        console.error("Authentication failed - please log in again");
+      } else {
+        console.error("Failed to fetch user profile:", response.status);
       }
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
