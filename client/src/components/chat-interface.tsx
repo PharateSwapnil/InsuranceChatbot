@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { chatService } from "@/lib/chat-service";
 import type { User } from "@/App";
 import type { Customer, ChatMessage } from "@shared/schema";
+import ReactMarkdown from 'react-markdown';
 
 interface ChatInterfaceProps {
   user: User;
@@ -157,7 +158,7 @@ Please select a customer using the search bar to get personalized recommendation
     if (!inputMessage.trim() && uploadedFiles.length === 0) return;
 
     let messageContent = inputMessage.trim();
-    
+
     // Handle file uploads
     if (uploadedFiles.length > 0) {
       const fileNames = uploadedFiles.map(file => file.name).join(", ");
@@ -268,7 +269,7 @@ Please select a customer using the search bar to get personalized recommendation
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm" className="text-muted-grey hover:text-deep-charcoal">
               <History className="w-4 h-4" />
@@ -278,7 +279,7 @@ Please select a customer using the search bar to get personalized recommendation
             </Button>
           </div>
         </div>
-        
+
         {selectedCustomer && (
           <div className="mt-2 p-2 bg-light-grey rounded-lg">
             <p className="text-xs text-muted-grey">Active Customer:</p>
@@ -300,7 +301,7 @@ Please select a customer using the search bar to get personalized recommendation
                 <Bot className="w-4 h-4 text-white" />
               </div>
             )}
-            
+
             <div className={`rounded-lg p-4 max-w-[85%] shadow-sm ${
               message.role === 'user' 
                 ? 'message-user' 
@@ -308,17 +309,72 @@ Please select a customer using the search bar to get personalized recommendation
                 ? 'message-assistant'
                 : 'message-system'
             }`}>
-              <div 
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
-              />
+              {message.role === "assistant" ? (
+                <div className="prose prose-sm max-w-none text-deep-charcoal">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ children }) => <h1 className="text-lg font-bold text-trust-navy mb-2">{children}</h1>,
+                      h2: ({ children }) => <h2 className="text-base font-semibold text-trust-navy mb-2">{children}</h2>,
+                      h3: ({ children }) => <h3 className="text-sm font-medium text-trust-navy mb-1">{children}</h3>,
+                      strong: ({ children }) => {
+                        const content = String(children);
+                        // All highlighted text should be bold black
+                        return <strong className="font-bold text-black">{children}</strong>;
+                      },
+                      ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+                      li: ({ children }) => {
+                        const content = String(children);
+                        let className = "text-sm";
+                        // Highlight benefit points
+                        if (content.includes('✅') || content.includes('benefit') || content.includes('advantage')) {
+                          className += " text-emerald-green";
+                        }
+                        // Highlight coverage amounts
+                        if (content.includes('₹') || content.includes('coverage')) {
+                          className += " font-medium";
+                        }
+                        return <li className={className}>{children}</li>;
+                      },
+                      p: ({ children }) => {
+                        const content = String(children);
+                        let className = "mb-2 text-sm leading-relaxed";
+                        // Highlight greeting lines
+                        if (content.includes('Hi ') && content.includes(',')) {
+                          className += " text-trust-navy font-medium text-base";
+                        }
+                        return <p className={className}>{children}</p>;
+                      },
+                      // Custom component for highlighting special text patterns
+                      text: ({ children }) => {
+                        const content = String(children);
+                        // Highlight currency amounts
+                        if (content.match(/₹[\d,]+/)) {
+                          return <span className="font-semibold text-emerald-green bg-emerald-green/10 px-1 rounded">{children}</span>;
+                        }
+                        // Highlight percentages
+                        if (content.match(/\d+\.?\d*%/)) {
+                          return <span className="font-semibold text-azure-blue bg-azure-blue/10 px-1 rounded">{children}</span>;
+                        }
+                        return <span>{children}</span>;
+                      }
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <div className="text-sm leading-relaxed">
+                  {message.content}
+                </div>
+              )}
               <p className={`text-xs mt-2 ${
                 message.role === 'user' ? 'text-blue/75' : 'text-muted-grey'
               }`}>
                 {new Date(message.timestamp).toLocaleTimeString()}
               </p>
             </div>
-            
+
             {message.role === 'user' && (
               <div className="w-8 h-8 bg-trust-navy rounded-full flex items-center justify-center flex-shrink-0">
                 <UserIcon className="w-4 h-4 text-white" />
@@ -437,7 +493,7 @@ Please select a customer using the search bar to get personalized recommendation
           >
             <Paperclip className="w-5 h-5" />
           </Button>
-          
+
           <div className="flex-1 relative">
             <Textarea
               ref={textareaRef}
@@ -456,7 +512,7 @@ Please select a customer using the search bar to get personalized recommendation
               <Mic className="w-4 h-4" />
             </Button>
           </div>
-          
+
           <Button
             onClick={handleSendMessage}
             disabled={(!inputMessage.trim() && uploadedFiles.length === 0) || isSending}
