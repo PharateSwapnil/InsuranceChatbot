@@ -69,8 +69,8 @@ export default function Dashboard({ user, setUser }: DashboardProps) {
               </svg>
             </div>
             <div>
-              <h1 className="font-bold text-lg">ABHi Assistant</h1>
-              <p className="text-xs opacity-75">Aditya Birla Hybrid Insurance</p>
+              <h1 className="font-bold text-lg">AB i Assistant</h1>
+              <p className="text-xs opacity-75">Aditya Birla i Assistant</p>
             </div>
           </div>
 

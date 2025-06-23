@@ -99,6 +99,7 @@ export class SqliteStorage implements IStorage {
         name TEXT NOT NULL,
         email TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'sales_rep',
+        level TEXT,
         created_at TEXT NOT NULL
       );
 
@@ -201,54 +202,67 @@ export class SqliteStorage implements IStorage {
 
     // Create demo users with different certification types
     const currentTime = new Date().toISOString();
-    const userInsert = this.db.prepare(
-      `INSERT INTO users (id, username, password, name, email, role, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    );
 
-    // 1. POSP (Point of Sales Person)
-    userInsert.run(
-      "FHcKInMqnIZXqCISjkP4B",
-      "sales.rep001",
-      "abhi2024",
-      "Abhishek Kumar (POSP)",
-      "posp@adityabirla.com",
-      "POSP",
-      currentTime
-    );
+    const insertUser = this.db.prepare(`
+      INSERT INTO users (id, username, password, name, email, role, level, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
-    // 2. IRDAI Licensed Agent
-    userInsert.run(
-      "FHcKInMqnIZXqCISjkP5C",
-      "agent.001",
-      "agent2024",
-      "Priya Sharma (IRDAI Agent)",
-      "agent@adityabirla.com",
-      "IRDAI_Agent",
-      currentTime
-    );
+    const demoUsers = [
+      {
+        id: "FHcKInMqnIZXqCISjkP4B",
+        username: "sales.rep001",
+        password: "abhi2024",
+        name: "Abhishek Kumar (POSP)",
+        email: "posp@adityabirla.com",
+        role: "POSP",
+        level: "Senior",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "FHcKInMqnIZXqCISjkP5C",
+        username: "agent.001",
+        password: "agent2024",
+        name: "Priya Sharma (IRDAI Agent)",
+        email: "agent@adityabirla.com",
+        role: "IRDAI_Agent",
+        level: "Intermediate",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "FHcKInMqnIZXqCISjkP6D",
+        username: "broker.001",
+        password: "broker2024",
+        name: "Rajesh Gupta (Corporate Broker)",
+        email: "broker@adityabirla.com",
+        role: "Corporate_Broker",
+        level: "Expert",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "FHcKInMqnIZXqCISjkP7E",
+        username: "group.001",
+        password: "group2024",
+        name: "Sunita Mehta (Group Insurance)",
+        email: "group@adityabirla.com",
+        role: "Group_Insurance",
+        level: "Beginner",
+        created_at: new Date().toISOString(),
+      },
+    ];
 
-    // 3. Corporate Agent/Broker
-    userInsert.run(
-      "FHcKInMqnIZXqCISjkP6D",
-      "broker.001",
-      "broker2024",
-      "Rajesh Gupta (Corporate Broker)",
-      "broker@adityabirla.com",
-      "Corporate_Broker",
-      currentTime
-    );
-
-    // 4. Group Insurance Salesman
-    userInsert.run(
-      "FHcKInMqnIZXqCISjkP7E",
-      "group.001",
-      "group2024",
-      "Sunita Mehta (Group Insurance)",
-      "group@adityabirla.com",
-      "Group_Insurance",
-      currentTime
-    );
+    for (const user of demoUsers) {
+      insertUser.run(
+        user.id,
+        user.username,
+        user.password,
+        user.name,
+        user.email,
+        user.role,
+        user.level,
+        user.created_at,
+      );
+    }
 
     // Create user exemptions for each user type
     const exemptionInsert = this.db.prepare(
@@ -379,12 +393,29 @@ export class SqliteStorage implements IStorage {
 
   private generateDummyCustomers(count: number): any[] {
     const customers = [];
-    const names = [
+    const maleNames = [
       "Rajesh Kumar",
-      "Priya Sharma",
       "Amit Patel",
-      "Sunita Singh",
       "Vikram Gupta",
+      "Anil Joshi",
+      "Suresh Menon",
+      "Dev Sharma",
+      "Karan Verma",
+      "Arjun Kapoor",
+      "Vivek Reddy",
+      "Rohan Singh",
+    ];
+    const femaleNames = [
+      "Priya Sharma",
+      "Sunita Singh",
+      "Anjali Nair",
+      "Deepika Verma",
+      "Neha Reddy",
+      "Aisha Khan",
+      "Shweta Patel",
+      "Meera Joshi",
+      "Divya Menon",
+      "Sakshi Kapoor",
     ];
     const cities = [
       "Mumbai",
@@ -411,21 +442,28 @@ export class SqliteStorage implements IStorage {
       "Government Employee",
     ];
 
-    for (let i = 1; i <= count; i++) {
+    for (let i = 0; i < count; i++) {
+      const gender = Math.random() > 0.5 ? "M" : "F";
+      const name = gender === "M" 
+        ? maleNames[Math.floor(Math.random() * maleNames.length)]
+        : femaleNames[Math.floor(Math.random() * femaleNames.length)];
+      const city = cities[Math.floor(Math.random() * cities.length)];
+      const state = states[Math.floor(Math.random() * states.length)];
+      const profession = professions[Math.floor(Math.random() * professions.length)];
       const customerId = `cust-${String(i).padStart(3, "0")}`;
       customers.push({
         id: customerId,
-        name: names[Math.floor(Math.random() * names.length)],
-        age: Math.floor(Math.random() * 40) + 25,
-        gender: Math.random() > 0.5 ? "M" : "F",
+        name: name,
+        age: Math.floor(Math.random() * 42) + 18, // Age between 18-59
+        gender: gender,
         marital_status: Math.random() > 0.6 ? "Married" : "Single",
         profession: professions[Math.floor(Math.random() * professions.length)],
         income_bracket: ["<5L", "5-10L", "10-25L", ">25L"][
           Math.floor(Math.random() * 4)
         ],
         annual_income: Math.floor(Math.random() * 2000000) + 300000,
-        city: cities[Math.floor(Math.random() * cities.length)],
-        state: states[Math.floor(Math.random() * states.length)],
+        city: city,
+        state: state,
         dependents_count: Math.floor(Math.random() * 4),
         health_conditions: JSON.stringify({
           diabetes: Math.random() > 0.8,
@@ -628,8 +666,8 @@ export class SqliteStorage implements IStorage {
     };
 
     const stmt = this.db.prepare(`
-      INSERT INTO users (id, username, password, name, email, role, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, username, password, name, email, role, level, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -639,6 +677,7 @@ export class SqliteStorage implements IStorage {
       newUser.name,
       newUser.email,
       newUser.role,
+      newUser.level,
       newUser.created_at,
     );
 
@@ -693,7 +732,7 @@ export class SqliteStorage implements IStorage {
 
     const setClause = Object.keys(updatedData).map(key => `${key} = ?`).join(', ');
     const values = Object.values(updatedData);
-    
+
     const stmt = this.db.prepare(`UPDATE user_exemptions SET ${setClause} WHERE id = ?`);
     stmt.run(...values, id);
 

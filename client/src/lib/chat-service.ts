@@ -79,6 +79,8 @@ export class ChatService {
     const prompts: Record<string, string> = {
       "health-insurance": "Tell me about Aditya Birla's health insurance plans, including Activ Health Enhanced and Activ Care. Include coverage options, premiums, and key benefits.",
       
+      "life-insurance": "Tell me about Aditya Birla's life insurance plans, including Protect@Ease and Protect@Active. Include coverage options, premiums, and key benefits.",
+      
       "term-plans": "Show me Aditya Birla's term insurance options like Protect@Ease and Protect@Active. Include coverage amounts, premium ranges, and unique features.",
       
       "compare-policies": "Compare Aditya Birla insurance policies with competitors like LIC, ICICI Prudential, and HDFC Life. Highlight our advantages in claim settlement ratio, premiums, and features.",

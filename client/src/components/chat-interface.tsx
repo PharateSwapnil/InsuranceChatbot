@@ -126,7 +126,7 @@ export default function ChatInterface({
     if (!selectedCustomer && messages.length === 0) {
       const initialMessage: ChatMessage = {
         role: "assistant",
-        content: `Hi! I'm ABHi, your AI assistant for Aditya Birla Insurance. I can help you with:
+        content: `Hi! I'm AB i Assistant, your AI assistant for Aditya Birla Insurance. I can help you with:
 
 **🎯 Policy Recommendations**
 • Analyze customer profiles for best-fit policies
@@ -187,7 +187,7 @@ Please select a customer using the search bar to get personalized recommendation
 
   const handleQuickAction = (action: string) => {
     const actionMessages: Record<string, string> = {
-      "health-insurance": "Tell me about Aditya Birla health insurance plans",
+      "life-insurance": "Tell me about Aditya Birla life insurance plans",
       "term-plans": "Show me term insurance options available",
       "compare-policies": "Compare our policies with competitors",
       "recommend-policy": selectedCustomer 
@@ -262,7 +262,7 @@ Please select a customer using the search bar to get personalized recommendation
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="font-medium text-deep-charcoal">ABHi Assistant</h3>
+              <h3 className="font-medium text-deep-charcoal">AB i Assistant</h3>
               <div className="flex items-center space-x-1">
                 <div className="status-dot"></div>
                 <p className="text-xs status-online">Online - Ready to help</p>
@@ -316,6 +316,26 @@ Please select a customer using the search bar to get personalized recommendation
                       h1: ({ children }) => <h1 className="text-lg font-bold text-trust-navy mb-2">{children}</h1>,
                       h2: ({ children }) => <h2 className="text-base font-semibold text-trust-navy mb-2">{children}</h2>,
                       h3: ({ children }) => <h3 className="text-sm font-medium text-trust-navy mb-1">{children}</h3>,
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-4">
+                          <table className="min-w-full border-collapse border border-soft-grey rounded-lg">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-light-grey">{children}</thead>,
+                      tbody: ({ children }) => <tbody>{children}</tbody>,
+                      tr: ({ children }) => <tr className="border-b border-soft-grey hover:bg-light-grey/50">{children}</tr>,
+                      th: ({ children }) => (
+                        <th className="border border-soft-grey px-4 py-2 text-left font-semibold text-trust-navy bg-azure-blue/10">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="border border-soft-grey px-4 py-2 text-sm">
+                          {children}
+                        </td>
+                      ),
                       strong: ({ children }) => {
                         const content = String(children);
                         // All highlighted text should be bold black
@@ -405,10 +425,10 @@ Please select a customer using the search bar to get personalized recommendation
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleQuickAction("health-insurance")}
+              onClick={() => handleQuickAction("life-insurance")}
               className="btn-primary text-xs"
             >
-              Health Insurance
+              Life Insurance
             </Button>
             <Button
               variant="outline"

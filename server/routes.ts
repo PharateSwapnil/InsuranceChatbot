@@ -48,7 +48,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionId = nanoid();
       const sessionData = { user };
       sessions.set(sessionId, sessionData);
-      
+
       // Set session cookie
       res.cookie('sessionId', sessionId, { 
         httpOnly: true, 
@@ -231,18 +231,18 @@ SALES GUIDANCE: Analyze this customer profile and provide recommendations for Ad
       let userExemptions: any[] = [];
       let exemptionGuidance = "";
       let advisorContext = "";
-      
+
       if (sessionUser) {
         try {
           currentAdvisor = await storage.getUserByUsername(sessionUser.username);
           if (currentAdvisor) {
             userExemptions = await storage.getUserExemptions(currentAdvisor.id);
-            
+
             advisorContext = `\n\nSALES ADVISOR CONTEXT:
 Advisor Name: ${currentAdvisor.name}
 Role: ${currentAdvisor.role}
 Certification Level: ${userExemptions.length > 0 ? userExemptions[0].certification_type : 'Standard'}`;
-            
+
             if (userExemptions.length > 0) {
               exemptionGuidance = `\n\nUNDERWRITING EXEMPTION LIMITS FOR ${currentAdvisor.name.toUpperCase()}:
 ${userExemptions.map(ex => `- ${ex.product_type}: Up to ₹${ex.exemption_limit.toLocaleString()} (${ex.certification_type} authority)`).join('\n')}
@@ -266,8 +266,8 @@ RESPONSE FORMAT: Always start your response with "Hi ${currentAdvisor.name}," an
       }
       const history = conversationHistory.get(sessionKey)!;
 
-      // System prompt for ABHi
-      const systemPrompt = `You are "ABHi" (Aditya Birla Hybrid Insurance) Assistant — a professional AI assistant designed to help Aditya Birla Insurance sales advisors.
+      // System prompt for AB i Assistant
+      const systemPrompt = `You are "AB i Assistant" (Aditya Birla i Assistant) — a professional AI assistant designed to help Aditya Birla Insurance sales advisors.
 
 IMPORTANT RESPONSE FORMAT: Always start your response with "Hi ${currentAdvisor?.name || 'Sales Advisor'}," to personalize the interaction.
 
@@ -314,16 +314,16 @@ ${customerContext}${exemptionGuidance}`;
           const messages = [
             { role: "system", content: systemPrompt + advisorContext + customerContext + exemptionGuidance }
           ];
-          
+
           // Add conversation history (last 10 messages to avoid token limits)
           const recentHistory = history.slice(-10);
           messages.push(...recentHistory);
-          
+
           // Add current message
           messages.push({ role: "user", content: message });
 
           console.log("Calling Groq API with", messages.length, "messages");
-          
+
           const response = await fetch(
             "https://api.groq.com/openai/v1/chat/completions",
             {
@@ -346,13 +346,13 @@ ${customerContext}${exemptionGuidance}`;
             aiResponse =
               data.choices[0]?.message?.content ||
               "I apologize, but I'm having trouble generating a response right now. Please try again.";
-            
+
             console.log("Groq API response received successfully");
-            
+
             // Add to conversation history
             history.push({ role: "user", content: message });
             history.push({ role: "assistant", content: aiResponse });
-            
+
           } else {
             const errorText = await response.text();
             console.error(`Groq API error: ${response.status} - ${errorText}`);
@@ -470,11 +470,11 @@ ${customerContext}${exemptionGuidance}`;
     try {
       const { id } = req.params;
       const sessionUser = (req as any).session?.user;
-      
+
       if (!sessionUser) {
         return res.status(401).json({ message: "Not authenticated" });
       }
-      
+
       // Use the session user data directly or fetch from database
       let user = sessionUser;
       if (!user.id || user.id !== id) {
@@ -483,9 +483,9 @@ ${customerContext}${exemptionGuidance}`;
           return res.status(404).json({ message: "User not found" });
         }
       }
-      
+
       const exemptions = await storage.getUserExemptions(user.id);
-      
+
       res.json({
         user,
         exemptions
@@ -509,10 +509,10 @@ function generateFallbackResponse(
 ): string {
   const lowerMessage = message.toLowerCase();
   const advisorName = currentAdvisor?.name || "Sales Advisor";
-  
+
   // Always start with advisor's name
   const greeting = `Hi ${advisorName},`;
-  
+
   // Extract coverage amounts from message
   const coverageMatch = message.match(/(\d+)\s*(cr|crore|lakh|lakhs)/i);
   let requestedCoverage = 0;
@@ -531,7 +531,7 @@ function generateFallbackResponse(
       (lowerMessage.includes('term') && ex.product_type.includes('Term')) ||
       (lowerMessage.includes('wealth') && ex.product_type.includes('Investment'))
     );
-    
+
     if (relevantExemption && requestedCoverage > relevantExemption.exemption_limit) {
       underwritingWarning = `\n\n⚠️ **UNDERWRITING ALERT FOR ${advisorName.toUpperCase()}:**
 The requested ₹${(requestedCoverage/10000000).toFixed(1)} Cr coverage exceeds your ${relevantExemption.certification_type} exemption limit of ₹${(relevantExemption.exemption_limit/100000).toFixed(0)} Lakh for ${relevantExemption.product_type}.
@@ -587,16 +587,14 @@ Would you like me to help you prepare a detailed proposal?`;
 
 Our term insurance plans offer maximum life coverage at affordable premiums:
 
-**Protect@Ease** - Premium term plan
-• Coverage: **₹25L to ₹10Cr**
-• Features: Return of premium option, waiver of premium rider
-• Claim Settlement: **98.2%** success rate
-• Tax Benefits: Up to **₹1.5L** under 80C + **₹10L** under 10(10D)
+| Plan | Coverage | Key Features | Premium (30yr Male) | Tax Benefits |
+|------|----------|--------------|-------------------|--------------|
+| **Protect@Ease** | ₹25L to ₹10Cr | Sum assured return, Premium waiver | ₹12,000/year | ₹1.5L (80C) + ₹10L (10D) |
+| **Protect@Active** | ₹50L to ₹5Cr | Increasing cover, Critical illness rider | ₹8,500/year | ₹1.5L (80C) + ₹10L (10D) |
 
-**Protect@Active** - Value-focused term plan
-• Coverage: **₹50L to ₹5Cr**  
-• Features: Increasing cover option, critical illness rider
-• Ideal for: Young professionals and families
+**Key Features:**
+• **Protect@Ease**: Comprehensive term plan with return of premium option
+• **Protect@Active**: Value-focused term plan for young professionals
 
 **💪 Why choose Aditya Birla Term Insurance?**
 ✅ **10-15%** lower premiums than competitors
@@ -692,7 +690,7 @@ Would you like a detailed quotation?`;
   // Default response
   return `${greeting}
 
-I'm ABHi, your AI assistant for Aditya Birla Insurance. I can help you with:
+I'm AB i Assistant, your AI assistant for Aditya Birla Insurance. I can help you with:
 
 **🎯 Our Insurance Products:**
 • **Health Insurance** - Activ Health Enhanced, Activ Care

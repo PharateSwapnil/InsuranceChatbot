@@ -86,10 +86,10 @@ export default function Login({ setUser }: LoginProps) {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-deep-charcoal">
-              ABHi Assistant
+              AB i Assistant
             </CardTitle>
             <CardDescription className="text-muted-grey">
-              Aditya Birla Hybrid Insurance
+              Aditya Birla i Assistant
             </CardDescription>
           </div>
         </CardHeader>

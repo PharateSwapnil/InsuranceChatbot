@@ -121,6 +121,12 @@ export default function UserProfile({ user }: UserProfileProps) {
                     </Badge>
                   </div>
                   <div>
+                    <p className="text-sm font-medium text-muted-grey">Level</p>
+                    <Badge className="bg-emerald-green text-white">
+                      {profileData.user.level || 'Not Assigned'}
+                    </Badge>
+                  </div>
+                  <div>
                     <p className="text-sm font-medium text-muted-grey">User ID</p>
                     <p className="text-xs text-deep-charcoal font-mono">{profileData.user.id}</p>
                   </div>

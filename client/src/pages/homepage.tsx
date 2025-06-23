@@ -6,8 +6,17 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function Homepage() {
   const departmentCards = [
     {
+      icon: '🏥',
+      title: 'Health Insurance',
+      description: 'Comprehensive medical coverage with cashless facilities.',
+      onClick: () => {
+        // Navigate to the insurance login/dashboard
+        window.location.href = '/login';
+      }
+    },
+    {
       icon: '🛡️',
-      title: 'Health & Life Insurance',
+      title: 'Life Insurance',
       description: 'Secure your future with customizable life cover plans.',
       onClick: () => {
         // Navigate to the insurance login/dashboard
@@ -98,7 +107,7 @@ export default function Homepage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {departmentCards.map((card, index) => (
               <Card 
                 key={index}

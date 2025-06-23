@@ -95,7 +95,7 @@ export default function CustomerProfile({ customer, onQuickAction }: CustomerPro
       }
 
       const data = await response.json();
-      
+
       if (data.success && Array.isArray(data.recommendations)) {
         setRecommendations(data.recommendations);
         setShowRecommendations(true);
@@ -199,7 +199,12 @@ export default function CustomerProfile({ customer, onQuickAction }: CustomerPro
                 <span className="text-muted-grey">Dependents</span>
                 <p className="font-medium text-deep-charcoal">{customer.dependents_count}</p>
               </div>
-            </div>
+                </div>
+
+                <div className="mt-2">
+                  <span className="text-muted-grey">Customer ID</span>
+                  <p className="text-xs text-deep-charcoal font-mono">{customer.id}</p>
+                </div>
 
             <Separator />
 
