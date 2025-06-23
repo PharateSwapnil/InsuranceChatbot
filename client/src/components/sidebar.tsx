@@ -270,6 +270,32 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                 className={`w-full text-white hover:bg-white/10 transition-all duration-200 ${
                   item.active ? 'bg-white/10 border-r-2 border-gold-accent' : ''
                 } ${isExpanded ? 'justify-start px-3' : 'justify-center px-2'}`}
+                onClick={() => {
+                  // Handle navigation based on the item
+                  switch(item.label) {
+                    case 'Dashboard':
+                      window.location.hash = '#/dashboard';
+                      break;
+                    case 'Customers':
+                      // For now, just show a message since customers are handled via search
+                      alert('Use the search bar at the top to find and select customers');
+                      break;
+                    case 'Analytics':
+                      alert('Analytics feature coming soon!');
+                      break;
+                    case 'Policies':
+                      alert('Policies feature coming soon!');
+                      break;
+                    case 'Reports':
+                      alert('Reports feature coming soon!');
+                      break;
+                    case 'Support':
+                      alert('Support feature coming soon!');
+                      break;
+                    default:
+                      console.log(`Navigation to ${item.label} not implemented yet`);
+                  }
+                }}
               >
                 <item.icon className={`flex-shrink-0 w-5 h-5 ${isExpanded ? '' : 'mx-auto'}`} />
                 <span className={`transition-all duration-300 ${

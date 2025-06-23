@@ -88,11 +88,11 @@ export default function CustomerSearch({ onCustomerSelect }: CustomerSearchProps
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search customers by name, phone, or email..."
+          placeholder="Search customers by name, phone, email, or ID..."
           value={query}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          className="w-full pl-10 pr-4 py-2 rounded-full bg-white text-deep-charcoal placeholder-muted-grey focus:ring-2 focus:ring-gold-accent border-0"
+          className="w-full pl-10 pr-4 py-2 rounded-full bg-white text-black placeholder-muted-grey focus:ring-2 focus:ring-gold-accent border-0"
         />
       </div>
 
@@ -169,7 +169,7 @@ export default function CustomerSearch({ onCustomerSelect }: CustomerSearchProps
                 <div className="p-3 text-center text-muted-grey">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p>No customers found</p>
-                  <p className="text-xs mt-1">Try searching with different keywords</p>
+                  <p className="text-xs mt-1">Try searching with name, phone, email, or customer ID</p>
                 </div>
               )}
             </div>

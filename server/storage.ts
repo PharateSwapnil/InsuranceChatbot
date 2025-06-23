@@ -216,7 +216,7 @@ export class SqliteStorage implements IStorage {
         name: "Abhishek Kumar (POSP)",
         email: "posp@adityabirla.com",
         role: "POSP",
-        level: "Senior",
+        level: "level-3",
         created_at: new Date().toISOString(),
       },
       {
@@ -226,7 +226,7 @@ export class SqliteStorage implements IStorage {
         name: "Priya Sharma (IRDAI Agent)",
         email: "agent@adityabirla.com",
         role: "IRDAI_Agent",
-        level: "Intermediate",
+        level: "level-2",
         created_at: new Date().toISOString(),
       },
       {
@@ -236,7 +236,7 @@ export class SqliteStorage implements IStorage {
         name: "Rajesh Gupta (Corporate Broker)",
         email: "broker@adityabirla.com",
         role: "Corporate_Broker",
-        level: "Expert",
+        level: "level-3",
         created_at: new Date().toISOString(),
       },
       {
@@ -246,7 +246,7 @@ export class SqliteStorage implements IStorage {
         name: "Sunita Mehta (Group Insurance)",
         email: "group@adityabirla.com",
         role: "Group_Insurance",
-        level: "Beginner",
+        level: "level-1",
         created_at: new Date().toISOString(),
       },
     ];
@@ -751,13 +751,13 @@ export class SqliteStorage implements IStorage {
   }
 
   async searchCustomers(query: string): Promise<Customer[]> {
-    const searchTerm = `%${query}%`;
     const stmt = this.db.prepare(`
       SELECT * FROM customers 
-      WHERE name LIKE ? OR email LIKE ? OR phone LIKE ?
+      WHERE name LIKE ? OR phone LIKE ? OR email LIKE ? OR id LIKE ?
       ORDER BY name
     `);
-    return stmt.all(searchTerm, searchTerm, searchTerm) as Customer[];
+    const searchTerm = `%${query}%`;
+    return stmt.all(searchTerm, searchTerm, searchTerm, searchTerm) as Customer[];
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {

@@ -92,7 +92,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   role: text("role").notNull().default("sales_advisor"),
-  level: text("level").notNull().default("Junior"),
+  level: text("level").notNull().default("level-1"),
   created_at: text("created_at").notNull(),
 });
 
