@@ -110,6 +110,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/customers", async (req, res) => {
+    try {
+      const customerData = req.body;
+      const customer = await storage.createCustomer(customerData);
+      res.json(customer);
+    } catch (error) {
+      console.error("Create customer error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Policy routes
   app.get("/api/policies", async (req, res) => {
     try {
@@ -289,6 +300,16 @@ IMPORTANT: You are talking TO the sales advisor, NOT to the customer.
 - Address the sales advisor directly by name
 - Provide sales guidance and talking points
 - Help the advisor understand customer needs and recommend appropriate policies
+
+SPECIAL PROFESSION HANDLING:
+When dealing with high-risk professions like FARMING, MINING, AVIATION, or other hazardous occupations:
+- 🚨 **FARMING PROFESSION ALERT**: Flag for enhanced underwriting
+- Require additional documentation: Income proof, land ownership, crop insurance details
+- Agricultural income assessment: Seasonal variations, crop dependency, weather risks
+- Recommend higher health coverage due to occupational hazards
+- Consider specialized agricultural insurance products
+- Manual underwriting required regardless of coverage amount
+- Extended waiting periods may apply
 
 Key Aditya Birla advantages to help advisors highlight:
 - Highest claim settlement ratio (98.2%)
@@ -513,6 +534,33 @@ function generateFallbackResponse(
   // Always start with advisor's name
   const greeting = `Hi ${advisorName},`;
 
+  // Check for farming profession in customer context
+  const isFarmingCustomer = customerContext.toLowerCase().includes('farming') || 
+                           customerContext.toLowerCase().includes('farmer') ||
+                           customerContext.toLowerCase().includes('agriculture');
+
+  let farmingAlert = "";
+  if (isFarmingCustomer) {
+    farmingAlert = `\n\n🚨 **HIGH-RISK PROFESSION ALERT - FARMING DETECTED**
+
+**MANDATORY UNDERWRITING REQUIREMENTS:**
+- Enhanced documentation required regardless of coverage amount
+- Agricultural income verification (last 3 years)
+- Land ownership/lease documents
+- Crop insurance details and claims history
+- Seasonal income pattern analysis
+- Manual underwriting by senior underwriter
+
+**SALES APPROACH FOR FARMING CUSTOMERS:**
+✅ Emphasize comprehensive health coverage (higher occupational risks)
+✅ Explain additional documentation upfront to set expectations  
+✅ Highlight our 98.2% claim settlement ratio for trust building
+✅ Recommend flexible premium payment aligned with harvest cycles
+✅ Position Aditya Birla's understanding of agricultural sector
+
+**PROCESSING TIME: 15-21 days** (vs standard 7-14 days)`;
+  }
+
   // Extract coverage amounts from message
   const coverageMatch = message.match(/(\d+)\s*(cr|crore|lakh|lakhs)/i);
   let requestedCoverage = 0;
@@ -713,6 +761,8 @@ I'm AB i Assistant, your AI assistant for Aditya Birla Insurance. I can help you
 • Claims assistance and guidance
 
 ${customerContext ? "I have access to the customer profile and can provide personalized recommendations." : "Please select a customer to get targeted assistance."}
+
+${farmingAlert}
 
 How can I help you today? You can ask about specific insurance products, premium calculations, or policy comparisons.`;
 }

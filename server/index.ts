@@ -66,7 +66,7 @@ app.use((req, res, next) => {
   const isWindows = process.platform === 'win32';
   const serverConfig = {
     port,
-    host: isWindows ? "localhost" : "0.0.0.0"
+    host: isWindows ? "localhost" : "139.59.92.85"
   };
   
   // Add reusePort for non-Windows systems in production
@@ -75,6 +75,6 @@ app.use((req, res, next) => {
   }
 
   server.listen(serverConfig, () => {
-    log(`serving on port http://localhost:${port}`);
+    log(`serving on port http://${serverConfig.host}:${port}`);
   });
 })();
