@@ -1,0 +1,75 @@
+name: Deploy to VPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npm run check
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package deployment bundle
+        run: |
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.github' \
+            -czf deploy.tar.gz \
+            dist \
+            add-farmers.js \
+            package.json
+
+      - name: Upload deployment bundle
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          source: deploy.tar.gz
+          target: /tmp/insurance-chatbot
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          script: |
+            set -e
+            APP_DIR="${{ secrets.APP_DIR || '/opt/insurance-chatbot' }}"
+            mkdir -p "$APP_DIR"
+            tar -xzf /tmp/insurance-chatbot/deploy.tar.gz -C "$APP_DIR"
+            cd "$APP_DIR"
+            npm install --omit=dev
+            if command -v pm2 >/dev/null 2>&1; then
+              pm2 delete insurance-chatbot || true
+              NODE_ENV=production pm2 start dist/index.js --name insurance-chatbot
+              sleep 5
+              node add-farmers.js
+              pm2 save
+            else
+              echo "PM2 is not installed on the server. Install PM2 or update the workflow restart command."
+              exit 1
+            fi

@@ -1,5 +1,4 @@
 
-import { nanoid } from "nanoid";
 
 // Farmer customer data
 const farmerCustomers = [
@@ -324,16 +323,23 @@ const farmerCustomers = [
 
 
 async function addFarmersToDatabase() {
-  const isDev = process.env.NODE_ENV !== "production"; // or use your own logic
-  const port = isDev ? 3000 : 5000;
-  const host = isDev ? "http://139.59.92.85" : "http://139.59.92.85"; // Use real prod domain
-  const baseUrl = `${host}:${port}/api/customers`;
+  const port = Number(process.env.PORT) || 5000;
+  const host = process.env.SEED_HOST || process.env.HOST || "127.0.0.1";
+  const protocol = process.env.SEED_PROTOCOL || "http";
+  const baseUrl = `${protocol}://${host}:${port}`;
 
   try {
-    console.log("Adding farmer customers to database...");
+    console.log(`Adding farmer customers via ${baseUrl}...`);
 
     for (const farmer of farmerCustomers) {
-      const response = await fetch(baseUrl, {
+      const existingResponse = await fetch(`${baseUrl}/api/customers/${farmer.id}`);
+
+      if (existingResponse.ok) {
+        console.log(`ℹ️ Farmer already exists: ${farmer.name} (${farmer.id})`);
+        continue;
+      }
+
+      const response = await fetch(`${baseUrl}/api/customers`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -343,21 +349,19 @@ async function addFarmersToDatabase() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log(`✅ Added farmer: ${farmer.name} (ID: ${result.id})`);
+        console.log(`✅ Added farmer: ${farmer.name} (${result.id})`);
       } else {
         console.error(`❌ Failed to add farmer: ${farmer.name}`);
         console.error("Response:", await response.text());
+        process.exitCode = 1;
       }
     }
 
-    console.log("Farmer customers added successfully!");
+    console.log("Farmer seed completed successfully!");
   } catch (error) {
     console.error("Error adding farmers:", error);
+    process.exitCode = 1;
   }
 }
 
-// Run the function
-addFarmersToDatabase();
-
-// Execute - node add-farmers.js
-// Ensure you have the nanoid package installed: npm install nanoid
+await addFarmersToDatabase();
