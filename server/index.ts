@@ -58,23 +58,12 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Port configuration: 3000 for development, 5000 for production
   const isDev = app.get("env") === "development";
-  const port = isDev ? 3000 : 5000;
-  
-  // Windows-compatible server configuration
-  const isWindows = process.platform === 'win32';
-  const serverConfig = {
-    port,
-    host: isWindows ? "localhost" : "139.59.92.85"
-  };
-  
-  // Add reusePort for non-Windows systems in production
-  if (!isWindows && !isDev) {
-    (serverConfig as any).reusePort = true;
-  }
+  const defaultPort = isDev ? 3000 : 5000;
+  const port = Number(process.env.PORT) || defaultPort;
+  const host = process.env.HOST || (isDev ? "localhost" : "0.0.0.0");
 
-  server.listen(serverConfig, () => {
-    log(`serving on port http://${serverConfig.host}:${port}`);
+  server.listen(port, host, () => {
+    log(`serving on http://${host}:${port}`);
   });
 })();

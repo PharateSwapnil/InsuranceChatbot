@@ -49,7 +49,7 @@ function App() {
       <TooltipProvider>
         <div className="App">
           <Switch>
-            <Route path="/" exact>
+            <Route path="/">
               <Homepage />
             </Route>
             <Route path="/login">
