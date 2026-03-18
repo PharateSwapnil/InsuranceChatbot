@@ -18,9 +18,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Type check
         run: npm run check
@@ -36,8 +37,8 @@ jobs:
             --exclude='.github' \
             -czf deploy.tar.gz \
             dist \
-            add-farmers.js \
-            package.json
+            package.json \
+            package-lock.json
 
       - name: Upload deployment bundle
         uses: appleboy/scp-action@v0.1.7
@@ -62,12 +63,10 @@ jobs:
             mkdir -p "$APP_DIR"
             tar -xzf /tmp/insurance-chatbot/deploy.tar.gz -C "$APP_DIR"
             cd "$APP_DIR"
-            npm install --omit=dev
+            npm ci --omit=dev
             if command -v pm2 >/dev/null 2>&1; then
               pm2 delete insurance-chatbot || true
-              NODE_ENV=production pm2 start dist/index.js --name insurance-chatbot
-              sleep 5
-              node add-farmers.js
+              pm2 start npm --name insurance-chatbot -- start
               pm2 save
             else
               echo "PM2 is not installed on the server. Install PM2 or update the workflow restart command."
